@@ -549,6 +549,10 @@ async def animation_sanitize(
     local ensure_names = {ensure_lua}
     local pairs = {pairs_lua}
 
+    local function json_string(value)
+        return json.encode({{value}}):sub(2, -2)
+    end
+
     local sanitized = {{
         reordered = false,
         ensured = 0,
@@ -794,7 +798,7 @@ async def animation_sanitize(
     table.insert(parts, "\\"overlaps_truncated\\":" .. tostring(overlaps_truncated) .. ",")
     table.insert(parts, "\\"inactive_layers\\":[")
     for i, name in ipairs(analysis.inactive_layers) do
-        table.insert(parts, '\\"' .. name .. '\\"')
+        table.insert(parts, json_string(name))
         if i < #analysis.inactive_layers then table.insert(parts, ",") end
     end
     table.insert(parts, "]")
@@ -807,7 +811,7 @@ async def animation_sanitize(
             local stats = layer_stats[layer.name]
             if stats then
                 count = count + 1
-                table.insert(parts, '\\"' .. layer.name .. '\\":{{')
+                table.insert(parts, json_string(layer.name) .. ":{{")
                 table.insert(parts, '\\"frames_active\\":' .. stats.frames_active .. ",")
                 table.insert(parts, '\\"cel_count\\":' .. stats.cel_count .. ",")
                 table.insert(parts, '\\"full_canvas_cels\\":' .. stats.full_canvas_cels .. ",")
@@ -838,7 +842,7 @@ async def animation_sanitize(
     if #alerts > 0 then
         table.insert(parts, ",\\"alerts\\":[")
         for i, msg in ipairs(alerts) do
-            table.insert(parts, '\\"' .. msg .. '\\"')
+            table.insert(parts, json_string(msg))
             if i < #alerts then table.insert(parts, ",") end
         end
         table.insert(parts, "]")
@@ -847,7 +851,7 @@ async def animation_sanitize(
     if #overlaps > 0 then
         table.insert(parts, ",\\"overlap_samples\\":[")
         for i, entry in ipairs(overlaps) do
-            table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":\\"" .. entry.a .. "\\",\\"b\\":\\"" .. entry.b .. "\\"")
+            table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":" .. json_string(entry.a) .. ",\\"b\\":" .. json_string(entry.b))
             if entry.a_bounds then
                 table.insert(parts, ",\\"a_bounds\\":[" .. entry.a_bounds[1] .. "," .. entry.a_bounds[2] .. "," .. entry.a_bounds[3] .. "," .. entry.a_bounds[4] .. "]")
                 table.insert(parts, ",\\"b_bounds\\":[" .. entry.b_bounds[1] .. "," .. entry.b_bounds[2] .. "," .. entry.b_bounds[3] .. "," .. entry.b_bounds[4] .. "]")

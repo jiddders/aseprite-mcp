@@ -9,6 +9,7 @@ from aseprite_mcp.tools import canvas, drawing, quality
 
 LAYER = 'Motion "quote" \\ path\nline\tcell'
 MISSING = 'Missing "quote" \\ path\nline\tcell'
+INACTIVE = 'Dormant "quote" \\ path\nline\tcell'
 
 
 def test_validate_scene_round_trips_missing_names_and_keeps_empty_arrays():
@@ -51,3 +52,30 @@ def test_audit_animation_round_trips_names_in_cels_overlaps_and_ranges():
             assert all(key in cel for key in ("x", "y", "w", "h"))
         else:
             assert cel == {"layer": LAYER}
+
+
+def test_animation_sanitize_round_trips_names_in_report_fields():
+    path = f"{BASE}/quality_sanitize.aseprite"
+    ok(run(canvas.create_canvas(8, 8, path)))
+    ok(run(canvas.add_layer(path, LAYER)))
+    ok(run(canvas.add_layer(path, INACTIVE)))
+    for name in ("Layer 1", LAYER):
+        ok(run(drawing.draw_pixels_at(
+            path, name, 1, [{"x": 1, "y": 1, "color": "#336699"}]
+        )))
+
+    for report_bounds in (False, True):
+        report = json.loads(ok(run(quality.animation_sanitize(
+            path,
+            layer_names=[LAYER, INACTIVE, "Layer 1"],
+            overlap_pairs=[f"{LAYER},Layer 1"],
+            ignore_full_canvas_overlaps=False,
+            report_bounds=report_bounds,
+            report_only=True,
+        ))))
+        assert report["analysis"]["inactive_layers"] == [INACTIVE]
+        assert LAYER in report["layer_stats"]
+        assert INACTIVE in report["layer_stats"]
+        assert f"full_canvas_cels:{LAYER}" in report["alerts"]
+        assert report["overlap_samples"][0]["a"] == LAYER
+        assert report["overlap_samples"][0]["b"] == "Layer 1"
