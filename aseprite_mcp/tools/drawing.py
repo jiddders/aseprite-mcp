@@ -11,6 +11,16 @@ def _parse_hex_color(value: str) -> tuple[int, int, int, int] | None:
     return parse_hex_color(value)
 
 
+def _valid_coordinates(items: object) -> bool:
+    """Require plain integers before placing nested coordinates in Lua."""
+    return isinstance(items, list) and all(
+        isinstance(item, dict)
+        and type(item.get("x")) is int
+        and type(item.get("y")) is int
+        for item in items
+    )
+
+
 @mcp.tool()
 async def draw_pixels(filename: str, pixels: List[Dict[str, Any]]) -> str:
     """Draw pixels on the canvas with specified colors.
@@ -23,6 +33,8 @@ async def draw_pixels(filename: str, pixels: List[Dict[str, Any]]) -> str:
     """
     if not os.path.exists(filename):
         return f"File {filename} not found"
+    if not _valid_coordinates(pixels):
+        return "Invalid coordinates: each pixel needs integer x and y"
 
     script = """
     local spr = app.activeSprite
@@ -350,6 +362,9 @@ async def draw_pixels_at(
     """
     if not os.path.exists(filename):
         return f"File {filename} not found"
+
+    if not _valid_coordinates(pixels):
+        return "Invalid coordinates: each pixel needs integer x and y"
 
     safe_layer_name = lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
@@ -747,6 +762,8 @@ async def draw_polygon(
     """
     if not os.path.exists(filename):
         return f"File {filename} not found"
+    if not _valid_coordinates(points):
+        return "Invalid coordinates: each point needs integer x and y"
     if len(points) < 3:
         return "Polygon requires at least 3 points"
 
@@ -871,6 +888,8 @@ async def draw_path(
     """
     if not os.path.exists(filename):
         return f"File {filename} not found"
+    if not _valid_coordinates(points):
+        return "Invalid coordinates: each point needs integer x and y"
     if len(points) < 2:
         return "Path requires at least 2 points"
 

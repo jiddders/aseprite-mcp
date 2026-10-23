@@ -31,7 +31,7 @@ def _parse_layer_frame_ranges(layer_frame_ranges: List[str] | None) -> str:
     ranges_lua = "{"
     for layer, spans in ranges.items():
         span_list = ",".join([f"{{{s},{e}}}" for s, e in spans])
-        ranges_lua += f"[\"{layer}\"]={{{span_list}}},"
+        ranges_lua += f"[\"{lua_escape(layer)}\"]={{{span_list}}},"
     ranges_lua += "}"
     return ranges_lua
 
@@ -51,7 +51,9 @@ def _parse_overlap_pairs(overlap_pairs: List[str] | None) -> str:
             right = right.strip()
             if left and right:
                 pairs.append((left, right))
-    return "{" + ",".join([f"{{\"{a}\",\"{b}\"}}" for a, b in pairs]) + "}"
+    return "{" + ",".join(
+        f"{{\"{lua_escape(a)}\",\"{lua_escape(b)}\"}}" for a, b in pairs
+    ) + "}"
 
 @mcp.tool()
 async def ensure_layers_present(
