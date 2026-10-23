@@ -8,6 +8,8 @@ quantize_to_palette stay) per the "deprecate, don't break" policy.
 
 General value (upstream-able): nothing Chimera-specific here.
 """
+
+from ..core.workspace import workspace
 import json
 import os
 
@@ -59,6 +61,7 @@ async def outline_native(
         place: "outside" or "inside"
         matrix: "circle" or "square"
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     rgb = _parse_hex_color(color)
@@ -102,6 +105,7 @@ async def adjust_hsl_native(
         lightness: -100..100
         x, y, width, height: optional region (width>0 & height>0 to scope)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not (-180 <= hue <= 180):
@@ -140,6 +144,7 @@ async def adjust_brightness_contrast(
         contrast: -100..100
         x, y, width, height: optional region (width>0 & height>0 to scope)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not (-100 <= brightness <= 100) or not (-100 <= contrast <= 100):
@@ -172,6 +177,7 @@ async def invert_colors(
         frame_index: 1-based frame
         x, y, width, height: optional region (width>0 & height>0 to scope)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     cmd = "        app.command.InvertColor{ui=false}"
@@ -204,6 +210,7 @@ async def apply_convolution(
         frame_index: 1-based frame
         x, y, width, height: optional region (width>0 & height>0 to scope)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if matrix not in CONVOLUTION_MATRICES:
@@ -248,6 +255,7 @@ async def extract_palette(
     Returns:
         JSON {colors: [#RRGGBB, ...], count}
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not (1 <= max_colors <= 256):

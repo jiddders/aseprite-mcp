@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 from typing import List, Dict, Any
 from ..core.commands import AsepriteCommand, lua_escape
@@ -12,7 +13,6 @@ def _parse_hex_color(value: str) -> tuple[int, int, int, int] | None:
 
 
 def _valid_coordinates(items: object) -> bool:
-    """Require plain integers before placing nested coordinates in Lua."""
     return isinstance(items, list) and all(
         isinstance(item, dict)
         and type(item.get("x")) is int
@@ -31,6 +31,7 @@ async def draw_pixels(filename: str, pixels: List[Dict[str, Any]]) -> str:
             {"x": int, "y": int, "color": str}
             where color is a hex code like "#FF0000"
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not _valid_coordinates(pixels):
@@ -99,6 +100,7 @@ async def draw_line(filename: str, x1: int, y1: int, x2: int, y2: int, color: st
         color: Hex color code (default: "#000000")
         thickness: Line thickness in pixels (default: 1)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -183,6 +185,7 @@ async def draw_rectangle(filename: str, x: int, y: int, width: int, height: int,
         color: Hex color code (default: "#000000")
         fill: Whether to fill the rectangle (default: False)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -243,6 +246,7 @@ async def fill_area(filename: str, x: int, y: int, color: str = "#000000") -> st
         y: Y coordinate to fill from
         color: Hex color code (default: "#000000")
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -297,6 +301,7 @@ async def draw_circle(filename: str, center_x: int, center_y: int, radius: int, 
         color: Hex color code (default: "#000000")
         fill: Whether to fill the circle (default: False)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -360,6 +365,7 @@ async def draw_pixels_at(
         pixels: List of pixel data with x/y/color
         create_if_missing: Create cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -442,6 +448,7 @@ async def draw_line_at(
         thickness (int, optional): The thickness of the line. Defaults to 1.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -543,6 +550,7 @@ async def draw_rectangle_at(
         fill (bool, optional): Whether to fill the rectangle. Defaults to False.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -620,6 +628,7 @@ async def draw_circle_at(
         fill (bool, optional): Whether to fill the circle. Defaults to False.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -692,6 +701,7 @@ async def fill_area_at(
         color (str, optional): The color to fill the area with. Defaults to "#000000".
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -760,6 +770,7 @@ async def draw_polygon(
         fill (bool, optional): Whether to fill the polygon. Defaults to False.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not _valid_coordinates(points):
@@ -886,6 +897,7 @@ async def draw_path(
         thickness (int, optional): The thickness of the path. Defaults to 1.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not _valid_coordinates(points):
@@ -993,6 +1005,7 @@ async def apply_gradient_rect(
         horizontal (bool, optional): Whether to draw the gradient horizontally. Defaults to True.
         create_if_missing (bool, optional): Whether to create the layer if it doesn't exist. Defaults to True.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -1086,6 +1099,7 @@ async def draw_ellipse_at(
         fill: Fill the ellipse instead of outlining it
         create_if_missing: Create the cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if radius_x <= 0 or radius_y <= 0:
@@ -1257,6 +1271,7 @@ async def draw_rows(
             is there, e.g. to separate an object from the scene behind it
         create_if_missing: Create the cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not rows:
@@ -1380,6 +1395,7 @@ async def draw_iso_box(
             drawn over whatever is there
         create_if_missing: Create the cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if w < 1 or d < 1 or h < 0:

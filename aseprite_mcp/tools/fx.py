@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER, NORMALIZE_CEL, PSET, HSL
@@ -38,6 +39,7 @@ async def outline_cel(
             e.g. one object on a layer that holds several; the outline may
             land 1 px outside the region. "" outlines the whole cel
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -129,6 +131,7 @@ async def replace_color(
         to_color: Replacement hex color
         tolerance: Per-channel tolerance 0-255 (default 0 = exact match)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -217,6 +220,7 @@ async def adjust_hsl(
         saturation_shift: Saturation delta, -100 to 100
         lightness_shift: Lightness delta, -100 to 100
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not (-360 <= hue_shift <= 360):
@@ -309,6 +313,7 @@ async def apply_dither_gradient(
         horizontal: Run the gradient left-to-right instead of top-to-bottom
         create_if_missing: Create the cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -411,6 +416,7 @@ async def apply_dither_pattern(
         density: Fraction of color_b, 0.0-1.0 (default 0.5)
         create_if_missing: Create the cel if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:

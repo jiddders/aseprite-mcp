@@ -1,0 +1,362 @@
+{
+  "animation_workflow_guide": {},
+  "render_onion_skin": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "compare_frames": {
+    "filename": "input_file"
+  },
+  "get_bounds": {
+    "filename": "input_file"
+  },
+  "get_color_stats": {
+    "filename": "input_file"
+  },
+  "lint_sprite": {
+    "filename": "input_file"
+  },
+  "create_tilemap_layer": {
+    "filename": "input_file"
+  },
+  "draw_on_tile": {
+    "filename": "input_file"
+  },
+  "set_tiles": {
+    "filename": "input_file"
+  },
+  "get_tile_at": {
+    "filename": "input_file"
+  },
+  "get_tilemap_info": {
+    "filename": "input_file"
+  },
+  "get_pixel_color": {
+    "filename": "input_file"
+  },
+  "get_pixels_rect": {
+    "filename": "input_file"
+  },
+  "get_composite_pixel": {
+    "filename": "input_file"
+  },
+  "get_composite_rect": {
+    "filename": "input_file"
+  },
+  "read_rows": {
+    "filename": "input_file"
+  },
+  "draw_pixels": {
+    "filename": "input_file"
+  },
+  "draw_line": {
+    "filename": "input_file"
+  },
+  "draw_rectangle": {
+    "filename": "input_file"
+  },
+  "fill_area": {
+    "filename": "input_file"
+  },
+  "draw_circle": {
+    "filename": "input_file"
+  },
+  "draw_pixels_at": {
+    "filename": "input_file"
+  },
+  "draw_line_at": {
+    "filename": "input_file"
+  },
+  "draw_rectangle_at": {
+    "filename": "input_file"
+  },
+  "draw_circle_at": {
+    "filename": "input_file"
+  },
+  "fill_area_at": {
+    "filename": "input_file"
+  },
+  "draw_polygon": {
+    "filename": "input_file"
+  },
+  "draw_path": {
+    "filename": "input_file"
+  },
+  "apply_gradient_rect": {
+    "filename": "input_file"
+  },
+  "draw_ellipse_at": {
+    "filename": "input_file"
+  },
+  "draw_rows": {
+    "filename": "input_file"
+  },
+  "draw_iso_box": {
+    "filename": "input_file"
+  },
+  "copy_layers_between_sprites": {
+    "source_filename": "input_file",
+    "target_filename": "input_file"
+  },
+  "export_sprite": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "copy_sprite": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "export_frame": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "export_spritesheet": {
+    "filename": "input_file",
+    "output_filename": "output_file",
+    "data_filename": "output_file"
+  },
+  "export_layers": {
+    "filename": "input_file",
+    "output_directory": "output_dir"
+  },
+  "export_tag": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "export_animation": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "import_image_as_layer": {
+    "filename": "input_file",
+    "image_path": "input_file"
+  },
+  "get_palette": {
+    "filename": "input_file"
+  },
+  "set_palette": {
+    "filename": "input_file"
+  },
+  "remap_colors_in_cel_range": {
+    "filename": "input_file"
+  },
+  "list_palette_presets": {},
+  "apply_palette_preset": {
+    "filename": "input_file"
+  },
+  "generate_color_ramp": {},
+  "quantize_to_palette": {
+    "filename": "input_file"
+  },
+  "set_color_mode": {
+    "filename": "input_file"
+  },
+  "add_frames": {
+    "filename": "input_file"
+  },
+  "set_frame_duration_all": {
+    "filename": "input_file"
+  },
+  "set_layer_visibility": {
+    "filename": "input_file"
+  },
+  "set_layer_opacity": {
+    "filename": "input_file"
+  },
+  "get_sprite_info": {
+    "filename": "input_file"
+  },
+  "duplicate_frame_range": {
+    "filename": "input_file"
+  },
+  "set_cel_position": {
+    "filename": "input_file"
+  },
+  "tween_cel_positions": {
+    "filename": "input_file"
+  },
+  "offset_cel_positions": {
+    "filename": "input_file"
+  },
+  "create_cel": {
+    "filename": "input_file"
+  },
+  "clear_cel": {
+    "filename": "input_file"
+  },
+  "copy_cel": {
+    "filename": "input_file"
+  },
+  "copy_frame": {
+    "filename": "input_file"
+  },
+  "propagate_frame_to_range": {
+    "filename": "input_file"
+  },
+  "set_tag": {
+    "filename": "input_file"
+  },
+  "set_onion_skin": {
+    "filename": "input_file"
+  },
+  "propagate_cels": {
+    "filename": "input_file"
+  },
+  "tween_cel_positions_eased": {
+    "filename": "input_file"
+  },
+  "oscillate_cel_positions": {
+    "filename": "input_file"
+  },
+  "tween_cel_opacity_eased": {
+    "filename": "input_file"
+  },
+  "tween_cel_scale_eased": {
+    "filename": "input_file"
+  },
+  "delete_frame": {
+    "filename": "input_file"
+  },
+  "delete_tag": {
+    "filename": "input_file"
+  },
+  "set_cel_opacity": {
+    "filename": "input_file"
+  },
+  "view_sprite": {
+    "filename": "input_file",
+    "output_filename": "output_file"
+  },
+  "flip_layer": {
+    "filename": "input_file"
+  },
+  "rotate_layer": {
+    "filename": "input_file"
+  },
+  "resize_canvas": {
+    "filename": "input_file"
+  },
+  "crop_canvas": {
+    "filename": "input_file"
+  },
+  "list_text_fonts": {},
+  "measure_text": {},
+  "draw_text": {
+    "filename": "input_file"
+  },
+  "move_region": {
+    "filename": "input_file"
+  },
+  "copy_region": {
+    "filename": "input_file"
+  },
+  "erase_region": {
+    "filename": "input_file"
+  },
+  "erase_color": {
+    "filename": "input_file"
+  },
+  "outline_cel": {
+    "filename": "input_file"
+  },
+  "replace_color": {
+    "filename": "input_file"
+  },
+  "adjust_hsl": {
+    "filename": "input_file"
+  },
+  "apply_dither_gradient": {
+    "filename": "input_file"
+  },
+  "apply_dither_pattern": {
+    "filename": "input_file"
+  },
+  "create_slice": {
+    "filename": "input_file"
+  },
+  "set_slice_center": {
+    "filename": "input_file"
+  },
+  "set_slice_pivot": {
+    "filename": "input_file"
+  },
+  "list_slices": {
+    "filename": "input_file"
+  },
+  "delete_slice": {
+    "filename": "input_file"
+  },
+  "delete_layer": {
+    "filename": "input_file"
+  },
+  "rename_layer": {
+    "filename": "input_file"
+  },
+  "duplicate_layer": {
+    "filename": "input_file"
+  },
+  "reorder_layer": {
+    "filename": "input_file"
+  },
+  "set_layer_blend_mode": {
+    "filename": "input_file"
+  },
+  "merge_layer_down": {
+    "filename": "input_file"
+  },
+  "flatten_sprite": {
+    "filename": "input_file"
+  },
+  "ensure_layers_present": {
+    "filename": "input_file"
+  },
+  "validate_scene": {
+    "filename": "input_file"
+  },
+  "audit_animation": {
+    "filename": "input_file"
+  },
+  "animation_sanitize": {
+    "filename": "input_file"
+  },
+  "create_canvas": {
+    "filename": "output_file"
+  },
+  "add_layer": {
+    "filename": "input_file"
+  },
+  "add_group": {
+    "filename": "input_file"
+  },
+  "add_frame": {
+    "filename": "input_file"
+  },
+  "set_frame": {
+    "filename": "input_file"
+  },
+  "set_frame_duration": {
+    "filename": "input_file"
+  },
+  "set_layer": {
+    "filename": "input_file"
+  },
+  "outline_native": {
+    "filename": "input_file"
+  },
+  "adjust_hsl_native": {
+    "filename": "input_file"
+  },
+  "adjust_brightness_contrast": {
+    "filename": "input_file"
+  },
+  "invert_colors": {
+    "filename": "input_file"
+  },
+  "apply_convolution": {
+    "filename": "input_file"
+  },
+  "list_convolution_matrices": {},
+  "extract_palette": {
+    "filename": "input_file"
+  }
+}

@@ -1,16 +1,16 @@
+from ..core.workspace import workspace
 import functools
 import io
 import json
 import math
 import os
 import struct
-import tempfile
 
 from mcp.server.fastmcp import Image
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
 
-from ..core.commands import AsepriteCommand, reject_traversal
+from ..core.commands import AsepriteCommand
 from ..core.region import parse_region
 from .. import mcp
 
@@ -41,7 +41,7 @@ def _font(size: int):
 def _frame_count(filename: str) -> int | None:
     """Read the frame count from the .aseprite header, or None for other files."""
     try:
-        with open(filename, "rb") as f:
+        with open(workspace.input_file(filename), "rb") as f:
             header = f.read(8)
     except OSError:
         return None
@@ -101,9 +101,9 @@ def _export(filename: str, layer_name: str, span: tuple[int, int] | None, tmp: s
     success, output = AsepriteCommand.run_command(args)
     if not success:
         return f"Failed to render sprite: {output}"
-    with open(data_path, encoding="utf-8") as f:
+    with open(workspace.input_file(data_path), encoding="utf-8") as f:
         data = json.load(f)
-    with PILImage.open(sheet_path) as im:
+    with PILImage.open(workspace.input_file(sheet_path)) as im:
         sheet = im.convert("RGBA")
     first = span[0] if span else 1
     frames = {}
@@ -246,14 +246,15 @@ async def view_sprite(
             e.g. "40,20,16,16" for a hand; rulers keep sprite coordinates
             and scale 0 zooms in to fill the view
     """
+    filename = workspace.output_file(filename)
+    if not os.path.isfile(filename):
+        return f"File {filename} not found"
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename) if output_filename else ""
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if scale < 0 or scale > 64:
         return "scale must be between 0 (auto) and 64"
-    if output_filename:
-        err = reject_traversal(output_filename)
-        if err:
-            return err
     rect = parse_region(region)
     if isinstance(rect, str):
         return rect
@@ -265,7 +266,7 @@ async def view_sprite(
         return picked
 
     rendered, layers = {}, []
-    with tempfile.TemporaryDirectory() as tmp:
+    with workspace.scratch() as tmp:
         for span in _spans(picked) if picked else [None]:
             result = _export(filename, layer_name, span, tmp)
             if isinstance(result, str):
@@ -320,6 +321,7 @@ async def view_sprite(
     if output_filename:
         if not output_filename.lower().endswith(".png"):
             output_filename = f"{output_filename}.png"
+            output_filename = workspace.output_file(output_filename)
         try:
             os.makedirs(os.path.dirname(os.path.abspath(output_filename)), exist_ok=True)
             out.save(output_filename)

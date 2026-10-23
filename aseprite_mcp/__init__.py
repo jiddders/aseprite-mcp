@@ -1,6 +1,18 @@
 """Aseprite MCP - Model Context Protocol implementation for Aseprite."""
 
+from contextlib import asynccontextmanager
+
 from mcp.server.fastmcp import FastMCP
+
+
+@asynccontextmanager
+async def _lifespan(server):
+    from .core.preview import previews
+
+    try:
+        yield
+    finally:
+        previews.close_all()
 
 
 INSTRUCTIONS = """\
@@ -29,7 +41,7 @@ mug, leaves grow from their pot.
 Reach for these before writing Lua: draw_rows / read_rows (pixels as text), draw_text (numbers, labels), \
 replace_color / remap_colors_in_cel_range (hit flashes, recolours), export_animation / export_tag (GIF \
 previews, scaled, on a background), compare_frames and get_bounds (did a part move? where is it?). \
-run_lua_script is the last resort.
+Raw Lua is disabled unless the operator explicitly enables ASEPRITE_UNSAFE_LUA=1 (unrestricted host access).
 
 Animate pose to pose: redraw each key pose (anticipation, action, follow-through) on its own frame, \
 with the whole body involved and the feet on one ground line unless airborne. copy_frame, \
@@ -39,7 +51,7 @@ and change shape on every frame in the air. Call animation_workflow_guide before
 (use_case "idle" for idle and breathing loops).
 """
 
-mcp = FastMCP("aseprite", instructions=INSTRUCTIONS)
+mcp = FastMCP("aseprite", instructions=INSTRUCTIONS, lifespan=_lifespan)
 
 __version__ = "0.1.0"
 __author__ = "Divyansh Singh"

@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import colorsys
 import json
 import os
@@ -51,6 +52,7 @@ def _parse_hex_color(value: str) -> tuple[int, int, int] | None:
 @mcp.tool()
 async def get_palette(filename: str) -> str:
     """Get the active sprite palette as a JSON array of hex colors."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -84,6 +86,7 @@ async def get_palette(filename: str) -> str:
 @mcp.tool()
 async def set_palette(filename: str, colors: List[str]) -> str:
     """Set the active sprite palette using a list of hex colors."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not colors:
@@ -137,6 +140,7 @@ async def remap_colors_in_cel_range(
         create_missing_cels (bool, optional): Whether to create missing cels. Defaults to False.
         source_frame_index (int | None, optional): The source frame index to use for remapping. Defaults to None.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not mappings:
@@ -255,6 +259,7 @@ async def apply_palette_preset(filename: str, preset: str) -> str:
         preset: One of: gameboy, monochrome, grayscale_4, cga, pico8, c64,
             dawnbringer16, dawnbringer32
     """
+    filename = workspace.input_file(filename)
     colors = PALETTE_PRESETS.get(preset.lower())
     if colors is None:
         return f"Unknown preset '{preset}'. Available: {', '.join(sorted(PALETTE_PRESETS))}"
@@ -332,6 +337,7 @@ async def quantize_to_palette(
         start_frame: First frame to process (default 1)
         end_frame: Last frame to process (default 0 = last frame)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -434,6 +440,7 @@ async def set_color_mode(filename: str, mode: str) -> str:
         filename: Aseprite file to modify
         mode: "rgb", "grayscale", or "indexed"
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if mode.lower() not in ("rgb", "grayscale", "indexed"):

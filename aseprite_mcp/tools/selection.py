@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER, NORMALIZE_CEL, PSET
@@ -40,6 +41,7 @@ async def move_region(
         dest_x: New left edge for the region
         dest_y: New top edge for the region
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -134,6 +136,7 @@ async def copy_region(
         target_layer_name: Destination layer (default: same as source)
         target_frame_index: Destination frame (default: same as source)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -227,6 +230,7 @@ async def erase_region(
         width: Region width
         height: Region height
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -286,6 +290,7 @@ async def erase_color(
         color: Hex color to erase, e.g. "#FF00FF"
         tolerance: Per-channel tolerance 0-255 (default 0 = exact match)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 

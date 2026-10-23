@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import json
 import os
 from ..core.commands import AsepriteCommand, lua_escape
@@ -23,6 +24,7 @@ async def get_pixel_color(
         layer_name: Layer to read from (uses active layer when empty)
         frame_index: Frame index starting at 1
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -101,6 +103,7 @@ async def get_pixels_rect(
     Returns:
         JSON array of {x, y, hex, r, g, b, a} objects
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -189,6 +192,7 @@ async def get_composite_pixel(filename: str, x: int, y: int, frame_index: int = 
         y: Y coordinate (sprite-global)
         frame_index: Frame index starting at 1
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -249,6 +253,7 @@ async def get_composite_rect(
     Returns:
         JSON array of {x, y, hex, r, g, b, a} objects
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -339,6 +344,7 @@ async def read_rows(
     Returns:
         JSON with x, y, width, height, rows and legend.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:

@@ -1,9 +1,3 @@
-"""Regression checks for data interpolated into drawing-tool Lua scripts.
-
-The Aseprite runner is replaced for every test. In particular, the injection
-cases must never execute the generated Lua while testing the vulnerable code.
-"""
-
 import asyncio
 import json
 import re
@@ -36,8 +30,11 @@ def _call(tool_name, filename, coordinates, layer_name="body"):
 
 
 @pytest.fixture
-def sprite_path(tmp_path):
-    # Drawing tools only check for existence before invoking Aseprite.
+def sprite_path(tmp_path, monkeypatch):
+    from aseprite_mcp.core.workspace import Workspace
+    scope = Workspace(tmp_path)
+    monkeypatch.setattr(drawing, "workspace", scope)
+    monkeypatch.setattr(quality, "workspace", scope)
     path = tmp_path / "sprite.aseprite"
     path.touch()
     return str(path)
@@ -71,7 +68,7 @@ def test_bad_nested_coordinate_never_reaches_aseprite(
     try:
         result = _call(tool_name, sprite_path, coordinates)
     except (TypeError, ValueError):
-        pass  # A direct Python caller may receive a validation exception.
+        pass
     else:
         assert "drawn" not in result.lower(), result
 
@@ -125,8 +122,6 @@ def test_layer_name_remains_lua_string_data(
     assert "drawn" in result.lower(), result
     assert len(captured_scripts) == 1
     script, _ = captured_scripts[0]
-    # JSON's quoted-string syntax is shared with these Lua escapes. Matching
-    # the whole find_layer call ensures a quote cannot terminate the literal.
     match = re.search(r'find_layer\(spr,\s*("(?:\\.|[^"\\])*")\)', script)
     assert match is not None, script
     assert json.loads(match.group(1)) == layer_name
@@ -154,7 +149,6 @@ def test_quality_layer_names_remain_lua_table_data(
     assert not result.startswith("Failed"), result
     assert len(captured_scripts) == 1
     script, _ = captured_scripts[0]
-    # The names in both table constructors must be complete quoted values.
     quoted = json.dumps(layer_name)
     assert f"[{quoted}]=" in script
     assert f"{{{quoted},\"body\"}}" in script

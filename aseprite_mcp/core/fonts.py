@@ -13,9 +13,9 @@ Two backends:
   fonts whose glyphs are already pixels and must not be resampled. ``size`` acts
   as an integer scale factor.
 
-Fonts live in ``~/.aseprite-mcp/fonts``: a bitmap font is a directory holding
+Fonts live in ``<workspace>/fonts``: a bitmap font is a directory holding
 ``font.json`` plus its sheet PNGs, and a TrueType font is simply a ``.ttf``/
-``.otf`` file dropped in. Installed system fonts are also discoverable.
+``.otf`` file dropped in. System fonts are not discovered.
 
 font.json schema::
 
@@ -51,17 +51,7 @@ from dataclasses import dataclass, field
 
 from PIL import Image, ImageDraw, ImageFont
 
-FONT_DIR = os.path.expanduser("~/.aseprite-mcp/fonts")
-
-_SYSTEM_FONT_DIRS = (
-    "/System/Library/Fonts",
-    "/Library/Fonts",
-    os.path.expanduser("~/Library/Fonts"),
-    "/usr/share/fonts",
-    "/usr/local/share/fonts",
-    os.path.expanduser("~/.fonts"),
-    "C:/Windows/Fonts",
-)
+from .workspace import workspace
 
 _TTF_EXT = (".ttf", ".otf", ".ttc")
 
@@ -97,7 +87,8 @@ class BitmapFont:
     is_bitmap = True
 
     def __init__(self, path: str):
-        descriptor = os.path.join(path, "font.json")
+        path = workspace.input_dir(path)
+        descriptor = workspace.input_file(os.path.join(path, "font.json"))
         try:
             with open(descriptor, encoding="utf-8") as fh:
                 spec = json.load(fh)
@@ -113,7 +104,7 @@ class BitmapFont:
 
         for sheet in spec.get("sheets") or ():
             try:
-                image = Image.open(os.path.join(path, sheet["file"])).convert("RGBA")
+                image = Image.open(workspace.descriptor_child(path, sheet["file"])).convert("RGBA")
             except (OSError, KeyError) as exc:
                 raise FontError(f"Bad sheet in {descriptor}: {exc}") from exc
             self._sheets.append({
@@ -250,7 +241,7 @@ class TrueTypeFont:
     is_bitmap = False
 
     def __init__(self, path: str):
-        self.path = path
+        self.path = workspace.input_file(path)
         self.name = os.path.splitext(os.path.basename(path))[0]
 
     def layout(
@@ -262,7 +253,7 @@ class TrueTypeFont:
         threshold: int = 128,
     ) -> tuple[set[Point], int]:
         try:
-            font = ImageFont.truetype(self.path, size)
+            font = ImageFont.truetype(workspace.input_file(self.path), size)
         except OSError as exc:
             raise FontError(f"Could not load font {self.path}: {exc}") from exc
 
@@ -309,40 +300,26 @@ class TrueTypeFont:
 # ---------------------------------------------------------------------------
 
 
-def _iter_user_fonts():
-    if not os.path.isdir(FONT_DIR):
-        return
-    for entry in sorted(os.listdir(FONT_DIR)):
-        full = os.path.join(FONT_DIR, entry)
-        if os.path.isdir(full) and os.path.exists(os.path.join(full, "font.json")):
-            yield entry, full, "bitmap"
-        elif entry.lower().endswith(_TTF_EXT):
-            yield os.path.splitext(entry)[0], full, "truetype"
-
-
-def _iter_system_fonts():
-    for directory in _SYSTEM_FONT_DIRS:
-        if not os.path.isdir(directory):
-            continue
-        try:
-            entries = sorted(os.listdir(directory))
-        except OSError:
-            continue
-        for entry in entries:
-            if entry.lower().endswith(_TTF_EXT):
-                yield os.path.splitext(entry)[0], os.path.join(directory, entry), "truetype"
-
-
 def available_fonts() -> list[dict]:
-    """User fonts first, then system fonts, de-duplicated by name."""
-    seen: set[str] = set()
-    found: list[dict] = []
-    for source, iterator in (("user", _iter_user_fonts()), ("system", _iter_system_fonts())):
-        for name, path, kind in iterator:
-            if name.lower() in seen:
+    directory = workspace.output_dir(str(workspace.root / 'fonts'))
+    if not os.path.isdir(directory):
+        return []
+    found = []
+    for entry in sorted(os.listdir(workspace.input_dir(directory))):
+        full = os.path.join(directory, entry)
+        try:
+            if os.path.isdir(full):
+                path = workspace.input_dir(full)
+                workspace.input_file(os.path.join(path, 'font.json'))
+                kind, name = 'bitmap', entry
+            elif entry.lower().endswith(_TTF_EXT):
+                path = workspace.input_file(full)
+                kind, name = 'truetype', os.path.splitext(entry)[0]
+            else:
                 continue
-            seen.add(name.lower())
-            found.append({"name": name, "kind": kind, "path": path, "source": source})
+        except ValueError:
+            continue
+        found.append({'name': name, 'kind': kind, 'path': path, 'source': 'workspace'})
     return found
 
 
@@ -350,35 +327,27 @@ _loaded: dict[str, BitmapFont | TrueTypeFont] = {}
 
 
 def load_font(spec: str) -> BitmapFont | TrueTypeFont:
-    """Resolve a font by name, or by path to a font file/bitmap font directory."""
-    if spec in _loaded:
-        return _loaded[spec]
-
-    path: str | None = None
-    kind: str | None = None
-
-    if os.path.sep in spec or spec.lower().endswith(_TTF_EXT):
-        expanded = os.path.expanduser(spec)
-        if os.path.isdir(expanded) and os.path.exists(os.path.join(expanded, "font.json")):
-            path, kind = expanded, "bitmap"
-        elif os.path.isfile(expanded):
-            path, kind = expanded, "truetype"
-
-    if path is None:
+    path = None
+    kind = None
+    if '/' in spec or '\\' in spec or spec.lower().endswith(_TTF_EXT):
+        candidate = workspace.output_file(spec) if spec.lower().endswith(_TTF_EXT) else workspace.input_dir(spec)
+        if os.path.isdir(candidate):
+            path, kind = workspace.input_dir(candidate), 'bitmap'
+        else:
+            path, kind = workspace.input_file(candidate), 'truetype'
+    else:
         for entry in available_fonts():
-            if entry["name"].lower() == spec.lower():
-                path, kind = entry["path"], entry["kind"]
+            if entry['name'].lower() == spec.lower():
+                path, kind = entry['path'], entry['kind']
                 break
-
     if path is None:
-        raise FontError(
-            f"Font '{spec}' not found. Call list_text_fonts to see what is available, "
-            f"or pass a path to a .ttf/.otf file or to a bitmap font directory."
-        )
-
-    font = BitmapFont(path) if kind == "bitmap" else TrueTypeFont(path)
-    _loaded[spec] = font
-    return font
+        raise FontError(f"Font '{spec}' not found in workspace/fonts")
+    if kind == 'bitmap':
+        return BitmapFont(path)
+    path = workspace.input_file(path)
+    if path not in _loaded:
+        _loaded[path] = TrueTypeFont(path)
+    return _loaded[path]
 
 
 def clear_cache() -> None:
