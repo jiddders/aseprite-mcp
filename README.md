@@ -2,7 +2,17 @@
 
 A Python MCP server that gives AI assistants full control over [Aseprite](https://www.aseprite.org/) for creating pixel art and animated sprites.
 
-**123 tools across 18 categories** — canvas, drawing, layers, animation, palettes, effects, slices, tilemaps, exports, visual-feedback/analysis tools, and a raw Lua escape hatch. The tool set is designed so an LLM has everything it needs to produce *good* pixel art, not just primitives: shading ramps with hue shifting, ordered dithering, outlines, retro palette presets with quantization, onion-skin renders, and frame diffing, bounds and lint checks for animation work.
+**122 tools by default, with one optional raw Lua tool, across 18 categories** — canvas, drawing, layers, animation, palettes, effects, slices, tilemaps, exports, visual-feedback/analysis tools, and a raw Lua escape hatch. The tool set is designed so an LLM has everything it needs to produce *good* pixel art, not just primitives: shading ramps with hue shifting, ordered dithering, outlines, retro palette presets with quantization, onion-skin renders, and frame diffing, bounds and lint checks for animation work.
+
+## Security fork
+
+This fork of `diivi/aseprite-mcp` starts from commit `a89b205bed31930ee141edf319e78c71ef16bba6` and repairs Lua input handling, tool file access, preview ownership, and dependency versions. See [SECURITY.md](SECURITY.md) for the boundaries and verification.
+
+Set `ASEPRITE_WORKSPACE` to a dedicated asset directory before starting the server. All ordinary tool inputs, outputs, fonts, and temporary files must be inside it. If omitted, the initial working directory is used. Put fonts in `<workspace>/fonts`; symlink descendants and path traversal are rejected.
+
+`run_lua_script` is absent by default. Setting `ASEPRITE_UNSAFE_LUA=1` before startup enables unrestricted Lua execution; the workspace policy does not confine that capability. Keep it disabled for ordinary scene creation.
+
+Install the locked dependencies with Python 3.13 and `uv sync --frozen --no-build`. Supply `ASEPRITE_PATH` and `ASEPRITE_WORKSPACE` through your MCP client's environment configuration. The server does not load `.env` files automatically. The Docker examples below are inherited from upstream and have not been verified for this fork.
 
 ## Examples
 
@@ -141,7 +151,7 @@ draw_rows(filename="mug.aseprite", layer_name="mug", frame_index=1, x=4, y=2,
 
 Aseprite's Lua API has no text drawing, so glyphs are rasterised on the server and composited into the sprite. Two font backends are supported: **bitmap** sprite-sheet fonts (the right choice for pixel art — glyphs are already pixels and `size` scales them by whole numbers) and **TrueType** `.ttf`/`.otf` files, rendered without antialiasing unless you ask for it.
 
-Fonts are discovered in `~/.aseprite-mcp/fonts`: a bitmap font is a directory containing `font.json` plus its sheet PNGs; a TrueType font is just the font file. Installed system fonts are listed too. `font` also accepts a direct path.
+Fonts are discovered in `<workspace>/fonts`: a bitmap font is a directory containing `font.json` plus its sheet PNGs; a TrueType font is just the font file. `font` also accepts a path inside the workspace. System font directories are not scanned.
 
 | Tool | Description |
 |------|-------------|
@@ -301,7 +311,7 @@ Native filters run Aseprite's own engine commands on a layer and frame:
 | `export_sprite` | Export to PNG, GIF, JPG, ... |
 | `export_frame` | Export one frame as PNG with integer upscaling (to look at your work, use `view_sprite`) |
 | `export_spritesheet` | Sprite sheet (horizontal/vertical/rows/columns/packed) with optional JSON metadata and per-tag filtering |
-| `export_layers` | One PNG per layer |
+| `export_layers` | Numeric PNG filenames with a JSON mapping to layer names; groups and duplicate selectors are rejected |
 | `export_tag` | Export an animation tag as GIF or PNG sequence |
 | `export_animation` | GIF or PNG sequence of every frame or one tag, scaled, optionally on a solid background — the sprite itself is never changed |
 | `import_image_as_layer` | Import a PNG into a layer (references, premade parts) |
@@ -351,7 +361,7 @@ Batch-mode equivalents of what a human artist gets from the Aseprite UI.
 
 | Tool | Description |
 |------|-------------|
-| `start_preview_server` / `stop_preview_server` | Serve exported files over local HTTP |
+| `start_preview_server` / `stop_preview_server` | Serve workspace files on `127.0.0.1`; stop only previews owned by this server |
 | `animation_workflow_guide` | How to animate well: key poses, anticipation, squash and stretch, timing (`character`, `idle`, `environment`) |
 
 The server also sends short pixel-art rules as MCP `instructions` when a client connects (silhouette first, one light direction, clean lines, check each pass), so the model gets them without calling anything.
@@ -360,7 +370,7 @@ The server also sends short pixel-art rules as MCP `instructions` when a client 
 
 | Tool | Description |
 |------|-------------|
-| `run_lua_script` | Execute arbitrary Aseprite Lua ([API docs](https://www.aseprite.org/api/)) in batch mode. The last resort, for what no dedicated tool covers: one script can batch many operations into a single Aseprite launch. Remember to `spr:saveAs(spr.filename)` and `print()` your results. ⚠️ Runs unrestricted code on the host — only pass scripts you trust. |
+| `run_lua_script` | Disabled unless `ASEPRITE_UNSAFE_LUA=1` at startup. Execute arbitrary Aseprite Lua ([API docs](https://www.aseprite.org/api/)) in batch mode. The last resort, for what no dedicated tool covers: one script can batch many operations into a single Aseprite launch. Remember to `spr:saveAs(spr.filename)` and `print()` your results. ⚠️ Runs unrestricted code on the host — only pass scripts you trust. |
 
 ## Recommended Workflow for LLMs
 
@@ -413,7 +423,7 @@ If installed, the binary will be at `/opt/steamapps/common/Aseprite/aseprite` an
 ### Prerequisites
 - Python 3.13+
 - `uv` package manager
-- Aseprite (set `ASEPRITE_PATH` in `.env` if it is not on your PATH)
+- Aseprite (set the `ASEPRITE_PATH` environment variable if it is not on your PATH)
 
 ### Installation:
 ```json
@@ -425,9 +435,14 @@ If installed, the binary will be at `/opt/steamapps/common/Aseprite/aseprite` an
               "--directory",
               "/path/to/repo",
               "run",
+              "--frozen",
               "-m",
               "aseprite_mcp"
-          ]
+          ],
+          "env": {
+              "ASEPRITE_PATH": "/path/to/aseprite",
+              "ASEPRITE_WORKSPACE": "/path/to/asset-workspace"
+          }
       }
   }
 }
