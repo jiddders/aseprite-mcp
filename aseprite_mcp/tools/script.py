@@ -1,9 +1,9 @@
 import os
 from ..core.commands import AsepriteCommand
 from .. import mcp
+from ..core.workspace import workspace, UNSAFE_LUA
 
 
-@mcp.tool()
 async def run_lua_script(script: str, filename: str = "") -> str:
     """Execute arbitrary Aseprite Lua code in batch mode (last resort).
 
@@ -32,6 +32,10 @@ async def run_lua_script(script: str, filename: str = "") -> str:
         script: Lua source code to execute
         filename: Optional Aseprite file to open before running
     """
+    if not UNSAFE_LUA:
+        return "Raw Lua is disabled; operator must explicitly set ASEPRITE_UNSAFE_LUA=1"
+    if filename:
+        filename = workspace.input_file(filename)
     if not script.strip():
         return "Script cannot be empty"
     if filename and not os.path.exists(filename):
@@ -41,3 +45,7 @@ async def run_lua_script(script: str, filename: str = "") -> str:
     if success:
         return output if output.strip() else "Script executed (no output printed)"
     return f"Script failed: {output}"
+
+
+if UNSAFE_LUA:
+    mcp.tool()(run_lua_script)

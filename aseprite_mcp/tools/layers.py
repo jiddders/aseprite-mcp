@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER
@@ -34,6 +35,7 @@ async def delete_layer(filename: str, layer_name: str) -> str:
         filename: Aseprite file to modify
         layer_name: Name of the layer to delete
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -70,6 +72,7 @@ async def rename_layer(filename: str, layer_name: str, new_name: str) -> str:
         layer_name: Current layer name
         new_name: New layer name
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not new_name:
@@ -116,6 +119,7 @@ async def duplicate_layer(
         group: Optional group to place the copy inside, by name or
             "group/subgroup" path (default: directly above the source)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -177,6 +181,7 @@ async def reorder_layer(filename: str, layer_name: str, position: int) -> str:
         layer_name: Layer to move
         position: Target stack position, 1-based where 1 is the bottom layer
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if position < 1:
@@ -218,6 +223,7 @@ async def set_layer_blend_mode(filename: str, layer_name: str, mode: str) -> str
             difference, exclusion, subtract, divide, hue, saturation,
             color, luminosity
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -256,6 +262,7 @@ async def merge_layer_down(filename: str, layer_name: str) -> str:
         filename: Aseprite file to modify
         layer_name: Layer to merge down (must not be the bottom layer)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -289,6 +296,7 @@ async def flatten_sprite(filename: str) -> str:
     Args:
         filename: Aseprite file to modify
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 

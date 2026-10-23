@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 import json
 from ..core.commands import AsepriteCommand, lua_escape
@@ -13,6 +14,7 @@ async def add_frames(filename: str, count: int, duration_ms: int | None = None) 
         count: Number of frames to add
         duration_ms: Optional duration for each new frame in milliseconds
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -51,6 +53,7 @@ async def set_frame_duration_all(filename: str, duration_ms: int) -> str:
         filename: Name of the Aseprite file to modify
         duration_ms: Duration in milliseconds
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if duration_ms <= 0:
@@ -84,6 +87,7 @@ async def set_layer_visibility(filename: str, layer_name: str, visible: bool = T
         layer_name: Layer name to target
         visible: Whether the layer should be visible
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -119,6 +123,7 @@ async def set_layer_opacity(filename: str, layer_name: str, opacity: int) -> str
         layer_name: Layer name to target
         opacity: Opacity value 0-255
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if opacity < 0 or opacity > 255:
@@ -153,6 +158,7 @@ async def get_sprite_info(filename: str) -> str:
     Args:
         filename: Name of the Aseprite file to inspect
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -221,6 +227,7 @@ async def duplicate_frame_range(filename: str, start_frame: int, end_frame: int,
         end_frame: Ending frame index (1-based, inclusive)
         times: Number of times to append the range (default: 1)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if times < 1:
@@ -286,6 +293,7 @@ async def set_cel_position(
         create_if_missing: Create the cel if it does not exist
         source_frame_index: Optional frame to copy the cel image from
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -366,6 +374,7 @@ async def tween_cel_positions(
         create_missing_cels: Create missing cels during tween
         source_frame_index: Optional frame to copy the cel image from
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -446,6 +455,7 @@ async def offset_cel_positions(
         dx: X delta in pixels
         dy: Y delta in pixels
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -501,6 +511,7 @@ async def create_cel(
         x: X position in pixels
         y: Y position in pixels
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -536,6 +547,7 @@ async def create_cel(
 @mcp.tool()
 async def clear_cel(filename: str, layer_name: str, frame_index: int) -> str:
     """Delete a cel on a layer/frame."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -577,6 +589,7 @@ async def copy_cel(
     replace: bool = True
 ) -> str:
     """Copy a cel from one frame to another."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -626,6 +639,7 @@ async def copy_frame(
     overwrite: bool = True
 ) -> str:
     """Copy all cels from a source frame to a target frame (or append)."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -696,6 +710,7 @@ async def propagate_frame_to_range(
         end_frame: End frame index (1-based, inclusive)
         overwrite: Whether to overwrite existing cels (default: True)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -762,6 +777,7 @@ async def set_tag(
 
     direction: forward | reverse | pingpong | pingpong_reverse
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -816,6 +832,7 @@ async def set_onion_skin(
     opacity: int = 128
 ) -> str:
     """Configure onion skin settings for Aseprite."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if before < 0 or after < 0:
@@ -847,6 +864,7 @@ async def propagate_cels(
         end_frame: End frame index (1-based, inclusive)
         replace: Whether to overwrite existing cels (default: True)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not layer_names:
@@ -925,6 +943,7 @@ async def tween_cel_positions_eased(
     source_frame_index: int | None = None
 ) -> str:
     """Tween cel positions with easing across a frame range."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -1021,6 +1040,7 @@ async def oscillate_cel_positions(
     source_frame_index: int | None = None
 ) -> str:
     """Oscillate cel positions across a frame range using a sine wave."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -1106,6 +1126,7 @@ async def tween_cel_opacity_eased(
     source_frame_index: int | None = None
 ) -> str:
     """Tween cel opacity with easing across a frame range."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if start_opacity < 0 or start_opacity > 255 or end_opacity < 0 or end_opacity > 255:
@@ -1206,6 +1227,7 @@ async def tween_cel_scale_eased(
     source_frame_index: int | None = None
 ) -> str:
     """Tween cel scale with easing across a frame range."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if start_scale <= 0 or end_scale <= 0:
@@ -1324,6 +1346,7 @@ async def delete_frame(filename: str, frame_index: int) -> str:
         filename: Aseprite file to modify
         frame_index: Frame index starting at 1
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -1357,6 +1380,7 @@ async def delete_tag(filename: str, name: str) -> str:
         filename: Aseprite file to modify
         name: Tag name to delete
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -1400,6 +1424,7 @@ async def set_cel_opacity(
         frame_index: Frame index starting at 1
         opacity: Opacity 0 (transparent) to 255 (opaque)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not (0 <= opacity <= 255):

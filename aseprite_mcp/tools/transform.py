@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER
@@ -19,6 +20,7 @@ async def flip_layer(
         frame_index: Frame index starting at 1
         direction: "horizontal" or "vertical"
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if direction not in ("horizontal", "vertical"):
@@ -91,6 +93,7 @@ async def rotate_layer(
         frame_index: Frame index starting at 1
         angle: Rotation angle: 90, 180, or 270 (clockwise)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if angle not in (90, 180, 270):
@@ -180,6 +183,7 @@ async def resize_canvas(filename: str, width: int, height: int) -> str:
         width: New canvas width in pixels
         height: New canvas height in pixels
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -214,6 +218,7 @@ async def crop_canvas(filename: str, x: int, y: int, width: int, height: int) ->
         width: Width of the crop area
         height: Height of the crop area
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:

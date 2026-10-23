@@ -4,8 +4,9 @@ Aseprite exposes no text API to Lua, so glyphs are rasterised here and the
 result is blitted into the sprite as an image.
 """
 
+from ..core.workspace import workspace
+
 import os
-import tempfile
 from typing import Optional
 
 from PIL import Image
@@ -52,28 +53,16 @@ def _text_origin(anchor: str, x: int, y: int, metrics: dict) -> tuple[int, int]:
 async def list_text_fonts() -> str:
     """List fonts that draw_text can use.
 
-    Covers bitmap sprite-sheet fonts and .ttf/.otf files installed under
-    ~/.aseprite-mcp/fonts, plus TrueType fonts found in the system font
-    directories. Bitmap fonts are the right choice for pixel art: their
-    glyphs are already pixels and `size` scales them by whole numbers.
+    Covers bitmap sprite-sheet fonts and .ttf/.otf files in workspace/fonts.
+    Bitmap glyphs scale by whole numbers.
     """
     try:
         found = fontlib.available_fonts()
-    except Exception as exc:                                # pragma: no cover
+    except (ValueError, OSError) as exc:
         return f"ERROR: {exc}"
     if not found:
-        return "No fonts found. Drop a .ttf into ~/.aseprite-mcp/fonts/."
-
-    user = [f for f in found if f["source"] == "user"]
-    system = [f for f in found if f["source"] == "system"]
-    lines = []
-    if user:
-        lines.append("User fonts (~/.aseprite-mcp/fonts):")
-        lines += [f"  {f['name']}  [{f['kind']}]" for f in user]
-    if system:
-        lines.append(f"System fonts ({len(system)}, all truetype):")
-        lines += [f"  {f['name']}" for f in system]
-    return "\n".join(lines)
+        return "No fonts found. Add a .ttf or bitmap descriptor to workspace/fonts/."
+    return "Workspace fonts:\n" + "\n".join(f"  {f['name']}  [{f['kind']}]" for f in found)
 
 
 @mcp.tool()
@@ -172,6 +161,7 @@ async def draw_text(
         antialias: Keep greyscale edges instead of hard pixels (default False)
         create_if_missing: Create the layer/cel if absent (default True)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if anchor not in _ANCHORS:
@@ -234,59 +224,53 @@ async def draw_text(
         for gx, gy in group:
             px[gx - min_x, gy - min_y] = rgba
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-    tmp.close()
-    stamp.save(tmp.name)
+    with workspace.scratch() as directory:
+        stamp_path = workspace.output_file(os.path.join(directory, "stamp.png"))
+        stamp.save(stamp_path)
 
-    blit_x = origin_x + min_x
-    blit_y = origin_y + min_y
-    safe_png = lua_escape(os.path.abspath(tmp.name).replace("\\", "/"))
-    layer_lookup = (
-        f'local target = find_layer(spr, "{lua_escape(layer_name)}")'
-        if layer_name else
-        "local target = app.activeLayer or spr.layers[1]"
-    )
-    create_layer = (
-        f'''
-        if not target then
-            if not {str(create_if_missing).lower()} then print("ERROR:Layer not found") return end
-            target = spr:newLayer()
-            target.name = "{lua_escape(layer_name)}"
-        end''' if layer_name else
-        '''
-        if not target then print("ERROR:No layer to draw on") return end'''
-    )
+        blit_x = origin_x + min_x
+        blit_y = origin_y + min_y
+        safe_png = lua_escape(os.path.abspath(stamp_path).replace("\\", "/"))
+        layer_lookup = (
+            f'local target = find_layer(spr, "{lua_escape(layer_name)}")'
+            if layer_name else
+            "local target = app.activeLayer or spr.layers[1]"
+        )
+        create_layer = (
+            f'''
+            if not target then
+                if not {str(create_if_missing).lower()} then print("ERROR:Layer not found") return end
+                target = spr:newLayer()
+                target.name = "{lua_escape(layer_name)}"
+            end''' if layer_name else
+            '''
+            if not target then print("ERROR:No layer to draw on") return end'''
+        )
 
-    script = f"""
-    {FIND_LAYER}
-    {NORMALIZE_CEL}
-    local spr = app.activeSprite
-    if not spr then print("ERROR:No active sprite") return end
+        script = f"""
+        {FIND_LAYER}
+        {NORMALIZE_CEL}
+        local spr = app.activeSprite
+        if not spr then print("ERROR:No active sprite") return end
 
-    local idx = {frame_index}
-    if idx < 1 or idx > #spr.frames then print("ERROR:Frame index out of range") return end
+        local idx = {frame_index}
+        if idx < 1 or idx > #spr.frames then print("ERROR:Frame index out of range") return end
 
-    local stamp = Image{{ fromFile = "{safe_png}" }}
-    if not stamp then print("ERROR:Could not load rendered text") return end
+        local stamp = Image{{ fromFile = "{safe_png}" }}
+        if not stamp then print("ERROR:Could not load rendered text") return end
 
-    {layer_lookup}
-    app.transaction(function()
-        {create_layer}
-        local cel = normalize_cel(spr, target, spr.frames[idx], true)
-        cel.image:drawImage(stamp, Point({blit_x}, {blit_y}), 255, BlendMode.NORMAL)
-    end)
+        {layer_lookup}
+        app.transaction(function()
+            {create_layer}
+            local cel = normalize_cel(spr, target, spr.frames[idx], true)
+            cel.image:drawImage(stamp, Point({blit_x}, {blit_y}), 255, BlendMode.NORMAL)
+        end)
 
-    spr:saveAs(spr.filename)
-    print("OK")
-    """
+        spr:saveAs(spr.filename)
+        print("OK")
+        """
 
-    try:
         success, output = AsepriteCommand.execute_lua_script_checked(script, filename)
-    finally:
-        try:
-            os.unlink(tmp.name)
-        except OSError:
-            pass
 
     if not success:
         return f"Error drawing text: {output}"

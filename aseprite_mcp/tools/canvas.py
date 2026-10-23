@@ -1,5 +1,6 @@
+from ..core.workspace import workspace
 import os
-from ..core.commands import AsepriteCommand, lua_escape, reject_traversal
+from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER
 from .. import mcp
 
@@ -12,11 +13,9 @@ async def create_canvas(width: int, height: int, filename: str = "canvas.aseprit
         height: Height of the canvas in pixels
         filename: Name of the output file (default: canvas.aseprite)
     """
+    filename = workspace.output_file(filename)
     if width <= 0 or height <= 0:
         return "Width and height must be > 0"
-    err = reject_traversal(filename)
-    if err:
-        return err
 
     safe_path = lua_escape(filename.replace("\\", "/"))
     script = f"""
@@ -42,6 +41,7 @@ async def add_layer(filename: str, layer_name: str, group: str = "") -> str:
         group: Optional group to place the new layer inside, by name or
             "group/subgroup" path (default: top level)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -90,6 +90,7 @@ async def add_group(filename: str, group_name: str, parent_group: str = "") -> s
         parent_group: Optional existing group to nest the new group inside, by
             name or "group/subgroup" path (default: top level)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -131,6 +132,7 @@ async def add_frame(filename: str) -> str:
     Args:
         filename: Name of the Aseprite file to modify
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     
@@ -161,6 +163,7 @@ async def set_frame(filename: str, frame_index: int) -> str:
         filename: Name of the Aseprite file to modify
         frame_index: Frame index starting at 1
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -197,6 +200,7 @@ async def set_frame_duration(filename: str, frame_index: int, duration_ms: int) 
         frame_index: Frame index starting at 1
         duration_ms: Duration in milliseconds
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if duration_ms <= 0:
@@ -235,6 +239,7 @@ async def set_layer(filename: str, layer_name: str, create_if_missing: bool = Fa
         layer_name: Layer name to activate
         create_if_missing: Create layer if it does not exist
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 

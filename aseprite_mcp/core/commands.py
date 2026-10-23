@@ -1,39 +1,13 @@
 import subprocess
-import tempfile
 import os
-import dotenv
-
-_ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
-dotenv.load_dotenv(dotenv_path=_ENV_PATH)
+from .workspace import workspace
 
 
 def lua_escape(s: str) -> str:
-    """Escape a string for safe embedding inside a Lua double-quoted string literal."""
-    return (
-        s.replace("\\", "\\\\")
-         .replace('"', '\\"')
-         .replace("\n", "\\n")
-         .replace("\r", "\\r")
-         .replace("\0", "\\0")
-    )
-
-
-def reject_traversal(path: str) -> str | None:
-    """Reject parent-directory traversal in a user-supplied path.
-
-    Returns an error message string when the path contains a `..`
-    component, or None when the path looks safe.
-
-    The check works on normalized path components, so it does not
-    false-positive on filenames like `foo..bar.aseprite` (the previous
-    `'..' in path` substring check did). Absolute paths and tilde
-    expansion are not rejected here: this function targets traversal
-    only, not access scoping.
-    """
-    parts = os.path.normpath(path).replace("\\", "/").split("/")
-    if ".." in parts:
-        return "Invalid filename: parent directory traversal not allowed"
-    return None
+    escapes = {'\n': r'\n', '\r': r'\r', '\t': r'\t'}
+    return ''.join(escapes[c] if c in escapes else '\\' + c if c in ('\\', '"') else
+                   f"\\{ord(c):03d}" if ord(c) < 32 or ord(c) == 127 else c
+                   for c in s)
 
 
 class AsepriteCommand:
@@ -51,10 +25,12 @@ class AsepriteCommand:
         """
         try:
             cmd = [os.getenv('ASEPRITE_PATH', 'aseprite')] + args
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
             return True, result.stdout
         except subprocess.CalledProcessError as e:
             return False, e.stderr
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return False, str(e)
     
     @staticmethod
     def execute_lua_script(script_content, filename=None):
@@ -67,22 +43,17 @@ class AsepriteCommand:
         Returns:
             tuple: (success, output)
         """
-        # Create a temporary file for the script
-        with tempfile.NamedTemporaryFile(suffix='.lua', delete=False, mode='w') as tmp:
-            tmp.write(script_content)
-            script_path = tmp.name
-        
-        try:
+        if filename:
+            filename = workspace.input_file(filename)
+        with workspace.scratch() as directory:
+            script_path = workspace.output_file(os.path.join(directory, 'script.lua'))
+            with open(script_path, 'w', encoding='utf-8') as script:
+                script.write(script_content)
             args = ["--batch"]
-            if filename and os.path.exists(filename):
+            if filename:
                 args.append(filename)
             args.extend(["--script", script_path])
-            
-            success, output = AsepriteCommand.run_command(args)
-            return success, output
-        finally:
-            # Clean up the temporary script file
-            os.remove(script_path)
+            return AsepriteCommand.run_command(args)
 
     @staticmethod
     def execute_lua_script_checked(script_content, filename=None):

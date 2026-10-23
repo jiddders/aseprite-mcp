@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import os
 import json
 from typing import List
@@ -31,7 +32,7 @@ def _parse_layer_frame_ranges(layer_frame_ranges: List[str] | None) -> str:
     ranges_lua = "{"
     for layer, spans in ranges.items():
         span_list = ",".join([f"{{{s},{e}}}" for s, e in spans])
-        ranges_lua += f"[\"{layer}\"]={{{span_list}}},"
+        ranges_lua += f"[\"{lua_escape(layer)}\"]={{{span_list}}},"
     ranges_lua += "}"
     return ranges_lua
 
@@ -51,7 +52,9 @@ def _parse_overlap_pairs(overlap_pairs: List[str] | None) -> str:
             right = right.strip()
             if left and right:
                 pairs.append((left, right))
-    return "{" + ",".join([f"{{\"{a}\",\"{b}\"}}" for a, b in pairs]) + "}"
+    return "{" + ",".join(
+        f"{{\"{lua_escape(a)}\",\"{lua_escape(b)}\"}}" for a, b in pairs
+    ) + "}"
 
 @mcp.tool()
 async def ensure_layers_present(
@@ -61,6 +64,7 @@ async def ensure_layers_present(
     end_frame: int | None = None
 ) -> str:
     """Ensure cels exist for layers across a frame range."""
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not layer_names:
@@ -135,6 +139,7 @@ async def validate_scene(
 
     Returns JSON with missing layers and missing cels.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not required_layers:
@@ -157,6 +162,10 @@ async def validate_scene(
     local names = __LAYERS__
     local missing_layers = {}
     local missing_cels = {}
+
+    local function json_string(value)
+        return json.encode({value}):sub(2, -2)
+    end
 
     local function find_layer(name)
         for _, layer in ipairs(spr.layers) do
@@ -185,13 +194,13 @@ async def validate_scene(
     table.insert(parts, "\\"range\\":{\\"start\\":" .. start_idx .. ",\\"end\\":" .. end_idx .. "},")
     table.insert(parts, "\\"missing_layers\\":[")
     for i, name in ipairs(missing_layers) do
-        table.insert(parts, "\\""..name.."\\"")
+        table.insert(parts, json_string(name))
         if i < #missing_layers then table.insert(parts, ",") end
     end
     table.insert(parts, "],")
     table.insert(parts, "\\"missing_cels\\":[")
     for i, entry in ipairs(missing_cels) do
-        table.insert(parts, '{"layer":"' .. entry.layer .. '","frame":' .. entry.frame .. '}')
+        table.insert(parts, '{"layer":' .. json_string(entry.layer) .. ',"frame":' .. entry.frame .. '}')
         if i < #missing_cels then table.insert(parts, ",") end
     end
     table.insert(parts, "]}")
@@ -229,6 +238,7 @@ async def audit_animation(
     layer_frame_ranges format: ["layer:1-8,17-24", "clouds:1-12"]
     Returns JSON for AI consumption (summary, overlaps, out_of_range, optional cels).
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if start_frame < 1:
@@ -294,10 +304,8 @@ async def audit_animation(
     local cel_entries = {{}}
     local total_cels = 0
 
-    local function esc(s)
-        local v = s:gsub("\\\\", "\\\\\\\\")
-        v = v:gsub('"', '\\"')
-        return v
+    local function json_string(value)
+        return json.encode({{value}}):sub(2, -2)
     end
 
     local function in_ranges(layer_name, frame_index)
@@ -401,7 +409,7 @@ async def audit_animation(
 
     table.insert(parts, "\\"overlaps\\":[")
     for i, entry in ipairs(overlaps) do
-        table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":\\"" .. esc(entry.a) .. "\\",\\"b\\":\\"" .. esc(entry.b) .. "\\"")
+        table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":" .. json_string(entry.a) .. ",\\"b\\":" .. json_string(entry.b))
         if entry.a_bounds then
             table.insert(parts, ",\\"a_bounds\\":[" .. entry.a_bounds[1] .. "," .. entry.a_bounds[2] .. "," .. entry.a_bounds[3] .. "," .. entry.a_bounds[4] .. "]")
             table.insert(parts, ",\\"b_bounds\\":[" .. entry.b_bounds[1] .. "," .. entry.b_bounds[2] .. "," .. entry.b_bounds[3] .. "," .. entry.b_bounds[4] .. "]")
@@ -413,7 +421,7 @@ async def audit_animation(
 
     table.insert(parts, "\\"out_of_range\\":[")
     for i, entry in ipairs(out_of_range) do
-        table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"layer\\":\\"" .. esc(entry.layer) .. "\\"}}")
+        table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"layer\\":" .. json_string(entry.layer) .. "}}")
         if i < #out_of_range then table.insert(parts, ",") end
     end
     table.insert(parts, "]")
@@ -424,9 +432,9 @@ async def audit_animation(
             table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"cels\\":[")
             for j, cel in ipairs(entry.cels) do
                 if cel.w then
-                    table.insert(parts, "{{\\"layer\\":\\"" .. esc(cel.layer) .. "\\",\\"x\\":" .. cel.x .. ",\\"y\\":" .. cel.y .. ",\\"w\\":" .. cel.w .. ",\\"h\\":" .. cel.h .. "}}")
+                    table.insert(parts, "{{\\"layer\\":" .. json_string(cel.layer) .. ",\\"x\\":" .. cel.x .. ",\\"y\\":" .. cel.y .. ",\\"w\\":" .. cel.w .. ",\\"h\\":" .. cel.h .. "}}")
                 else
-                    table.insert(parts, "{{\\"layer\\":\\"" .. esc(cel.layer) .. "\\"}}")
+                    table.insert(parts, "{{\\"layer\\":" .. json_string(cel.layer) .. "}}")
                 end
                 if j < #entry.cels then table.insert(parts, ",") end
             end
@@ -471,6 +479,7 @@ async def animation_sanitize(
     ignore_full_canvas_overlaps: skip overlap checks when a cel is full canvas
     Returns JSON for AI consumption (summary, layer_stats, alerts, overlaps).
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if start_frame < 1:
@@ -539,6 +548,10 @@ async def animation_sanitize(
     local order_names = {order_lua}
     local ensure_names = {ensure_lua}
     local pairs = {pairs_lua}
+
+    local function json_string(value)
+        return json.encode({{value}}):sub(2, -2)
+    end
 
     local sanitized = {{
         reordered = false,
@@ -785,7 +798,7 @@ async def animation_sanitize(
     table.insert(parts, "\\"overlaps_truncated\\":" .. tostring(overlaps_truncated) .. ",")
     table.insert(parts, "\\"inactive_layers\\":[")
     for i, name in ipairs(analysis.inactive_layers) do
-        table.insert(parts, '\\"' .. name .. '\\"')
+        table.insert(parts, json_string(name))
         if i < #analysis.inactive_layers then table.insert(parts, ",") end
     end
     table.insert(parts, "]")
@@ -798,7 +811,7 @@ async def animation_sanitize(
             local stats = layer_stats[layer.name]
             if stats then
                 count = count + 1
-                table.insert(parts, '\\"' .. layer.name .. '\\":{{')
+                table.insert(parts, json_string(layer.name) .. ":{{")
                 table.insert(parts, '\\"frames_active\\":' .. stats.frames_active .. ",")
                 table.insert(parts, '\\"cel_count\\":' .. stats.cel_count .. ",")
                 table.insert(parts, '\\"full_canvas_cels\\":' .. stats.full_canvas_cels .. ",")
@@ -829,7 +842,7 @@ async def animation_sanitize(
     if #alerts > 0 then
         table.insert(parts, ",\\"alerts\\":[")
         for i, msg in ipairs(alerts) do
-            table.insert(parts, '\\"' .. msg .. '\\"')
+            table.insert(parts, json_string(msg))
             if i < #alerts then table.insert(parts, ",") end
         end
         table.insert(parts, "]")
@@ -838,7 +851,7 @@ async def animation_sanitize(
     if #overlaps > 0 then
         table.insert(parts, ",\\"overlap_samples\\":[")
         for i, entry in ipairs(overlaps) do
-            table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":\\"" .. entry.a .. "\\",\\"b\\":\\"" .. entry.b .. "\\"")
+            table.insert(parts, "{{\\"frame\\":" .. entry.frame .. ",\\"a\\":" .. json_string(entry.a) .. ",\\"b\\":" .. json_string(entry.b))
             if entry.a_bounds then
                 table.insert(parts, ",\\"a_bounds\\":[" .. entry.a_bounds[1] .. "," .. entry.a_bounds[2] .. "," .. entry.a_bounds[3] .. "," .. entry.a_bounds[4] .. "]")
                 table.insert(parts, ",\\"b_bounds\\":[" .. entry.b_bounds[1] .. "," .. entry.b_bounds[2] .. "," .. entry.b_bounds[3] .. "," .. entry.b_bounds[4] .. "]")

@@ -1,6 +1,7 @@
+from ..core.workspace import workspace
 import os
 from typing import List
-from ..core.commands import AsepriteCommand, lua_escape, reject_traversal
+from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER
 from .. import mcp
 
@@ -21,15 +22,14 @@ async def copy_layers_between_sprites(
         replace: Overwrite existing cels in target layers
         create_missing_frames: Add frames to target if needed
     """
+    source_filename = workspace.input_file(source_filename)
+    target_filename = workspace.input_file(target_filename)
     if not os.path.exists(source_filename):
         return f"File {source_filename} not found"
     if not os.path.exists(target_filename):
         return f"File {target_filename} not found"
     if not layer_names:
         return "Layer names list cannot be empty"
-    err = reject_traversal(source_filename) or reject_traversal(target_filename)
-    if err:
-        return err
 
     src_path = lua_escape(source_filename.replace("\\", "/"))
     dst_path = lua_escape(target_filename.replace("\\", "/"))

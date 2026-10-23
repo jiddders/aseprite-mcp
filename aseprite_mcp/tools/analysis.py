@@ -1,6 +1,7 @@
+from ..core.workspace import workspace
 import json
 import os
-from ..core.commands import AsepriteCommand, lua_escape, reject_traversal
+from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER, ISOLATE_LAYER
 from ..core.region import parse_region
 from .. import mcp
@@ -157,6 +158,8 @@ async def render_onion_skin(
         scale: Integer nearest-neighbor scale factor (default 4)
         ghost_opacity: Opacity of ghost frames, 0-255 (default 100)
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if scale < 1 or scale > 64:
@@ -165,11 +168,9 @@ async def render_onion_skin(
         return "ghost_opacity must be between 0 and 255"
     if before < 0 or after < 0:
         return "before and after must be >= 0"
-    err = reject_traversal(output_filename)
-    if err:
-        return err
     if not output_filename.lower().endswith(".png"):
         output_filename = f"{output_filename}.png"
+        output_filename = workspace.output_file(output_filename)
 
     safe_out = lua_escape(os.path.abspath(output_filename).replace("\\", "/"))
     script = f"""
@@ -259,6 +260,7 @@ async def compare_frames(
         JSON with changed pixel count, total pixels, percent changed,
         and the bounding box of the changed region.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     rect = parse_region(region)
@@ -374,6 +376,7 @@ async def get_bounds(filename: str, layer_name: str = "", frames: str = "") -> s
         JSON with one entry per frame: x, y, width, height of the
         non-transparent pixels, or "empty": true for a blank frame.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     picked = _parse_frame_list(frames)
@@ -436,6 +439,7 @@ async def get_color_stats(filename: str, frame_index: int = 1, top: int = 16) ->
         JSON with unique color count, opaque pixel count, and the top
         colors with usage counts.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if top < 1:
@@ -555,6 +559,7 @@ async def lint_sprite(filename: str, frame_index: int = 1, layer_name: str = "")
     Returns:
         JSON with counts and up to 50 entries per list, smallest pieces first.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 

@@ -4,23 +4,21 @@ These tests run each MCP tool against a real Aseprite (ASEPRITE_PATH),
 so they are smoke/integration tests, not unit tests. Tests within a
 file form a sequence on a module-scoped sprite; files are independent.
 
-Scratch files live under a fixed /tmp path (not pytest's tmp_path) so
-they resolve identically inside the Docker-wrapped Aseprite, which only
-mounts /tmp and /var/folders.
+The root conftest creates a unique owned workspace before package imports.
+It lives under /tmp for Docker-wrapped Aseprite compatibility.
 """
 import asyncio
 import os
-import shutil
 import sys
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+BASE = os.environ["ASEPRITE_WORKSPACE"]
+
 import aseprite_mcp.tools  # noqa: F401  (registers all tools)
 from aseprite_mcp.tools import canvas, drawing
-
-BASE = "/tmp/ase-pytest"
 
 
 def run(coro):
@@ -38,8 +36,6 @@ def ok(result):
 
 @pytest.fixture(scope="session", autouse=True)
 def base_dir():
-    shutil.rmtree(BASE, ignore_errors=True)
-    os.makedirs(BASE, exist_ok=True)
     return BASE
 
 

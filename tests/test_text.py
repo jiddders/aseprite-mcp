@@ -5,6 +5,7 @@ TrueType tests need something installed, and they skip when nothing is found.
 """
 import json
 import os
+from pathlib import Path
 
 import pytest
 from conftest import ok, run
@@ -24,9 +25,10 @@ CELL_W, CELL_H, ASCENT = 4, 6, 5
 
 
 @pytest.fixture(scope="module")
-def bitmap_font(tmp_path_factory):
+def bitmap_font(base_dir):
     """A minimal bitmap font directory, returned as a path for `font=`."""
-    directory = tmp_path_factory.mktemp("fixture-font")
+    directory = Path(base_dir) / "fixture-font"
+    directory.mkdir()
     chars = "ABO"
     sheet = Image.new("RGBA", (CELL_W * len(chars), CELL_H), (0, 0, 0, 0))
     for index, char in enumerate(chars):
@@ -127,11 +129,11 @@ def test_unmapped_characters_are_skipped(bitmap_font):
            run(text.measure_text("A", bitmap_font, 1))
 
 
-def test_overrides_replace_a_sheet_glyph(tmp_path, bitmap_font):
+def test_overrides_replace_a_sheet_glyph(base_dir, bitmap_font):
     """font.json overrides let a caller repair a glyph the sheet gets wrong."""
     spec = json.loads(open(os.path.join(bitmap_font, "font.json")).read())
     spec["overrides"] = {str(ord("A")): {"ascent": ASCENT, "rows": ["####"] * 5}}
-    patched = tmp_path / "patched"
+    patched = Path(base_dir) / "patched-font"
     patched.mkdir()
     (patched / "sheet.png").write_bytes(open(os.path.join(bitmap_font, "sheet.png"), "rb").read())
     (patched / "font.json").write_text(json.dumps(spec))

@@ -1,10 +1,41 @@
+from ..core.workspace import workspace
 import glob
+import json
+from pathlib import Path
 import os
-import tempfile
-from ..core.commands import AsepriteCommand, lua_escape, reject_traversal
+from ..core.commands import AsepriteCommand, lua_escape
 from ..core.lua import FIND_LAYER, NORMALIZE_CEL
 from ..core.colors import parse_hex_color
 from .. import mcp
+
+def _save_export(args, produced=None):
+    index = args.index('--save-as') + 1
+    destination = workspace.output_file(args[index])
+    with workspace.scratch() as directory:
+        base, extension = os.path.splitext(os.path.basename(destination))
+        staged = os.path.join(directory, 'render' + extension)
+        command = list(args)
+        command[index] = staged
+        success, output = AsepriteCommand.run_command(command)
+        if not success:
+            return success, output
+        moves = []
+        for entry in Path(directory).iterdir():
+            stem, suffix = os.path.splitext(entry.name)
+            if suffix != extension or not (stem == 'render' or (stem.startswith('render') and stem[6:].isdigit())):
+                return False, 'Unexpected native export filename'
+            source = workspace.input_file(str(entry))
+            target = workspace.output_file(str(Path(destination).parent / (base + stem[6:] + extension)))
+            moves.append((int(stem[6:] or '0'), entry.name, source, target))
+        if not moves:
+            return False, 'Aseprite exited 0 but wrote no file'
+        os.makedirs(workspace.output_dir(str(Path(destination).parent)), exist_ok=True)
+        for _, _, source, target in sorted(moves):
+            os.replace(source, target)
+            if produced is not None:
+                produced.append(target)
+        return True, output
+
 
 @mcp.tool()
 async def export_sprite(filename: str, output_filename: str, format: str = "png") -> str:
@@ -15,6 +46,8 @@ async def export_sprite(filename: str, output_filename: str, format: str = "png"
         output_filename: Name of the output file
         format: Output format (default: "png", can be "png", "gif", "jpg", etc.)
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     
@@ -24,15 +57,16 @@ async def export_sprite(filename: str, output_filename: str, format: str = "png"
     # Ensure output filename has the correct extension
     if not output_filename.lower().endswith(f".{format}"):
         output_filename = f"{output_filename}.{format}"
+        output_filename = workspace.output_file(output_filename)
     
     # For animated exports
     if format == "gif":
         args = ["--batch", filename, "--save-as", output_filename]
-        success, output = AsepriteCommand.run_command(args)
+        success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
     else:
         # For still image exports
         args = ["--batch", filename, "--save-as", output_filename]
-        success, output = AsepriteCommand.run_command(args)
+        success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
 
     # Aseprite exits 0 even when it cannot write the requested format
     # (e.g. format="json"). Confirm a file actually appeared. A multi-frame
@@ -41,7 +75,7 @@ async def export_sprite(filename: str, output_filename: str, format: str = "png"
     # too — same convention as export_frame.
     if success:
         base, ext = os.path.splitext(output_filename)
-        if not os.path.exists(output_filename) and not glob.glob(f"{base}*{ext}"):
+        if not os.path.exists(output_filename) and not [workspace.input_file(p) for p in glob.glob(f"{glob.escape(base)}*{glob.escape(ext)}")]:
             success = False
             output = "Aseprite exited 0 but wrote no file (the format may not be writable via --save-as)"
 
@@ -59,15 +93,15 @@ async def copy_sprite(filename: str, output_filename: str, overwrite: bool = Fal
         output_filename: Name of the output .aseprite file
         overwrite: Whether to overwrite if output exists
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
     if not output_filename.lower().endswith(".aseprite"):
         output_filename = f"{output_filename}.aseprite"
+        output_filename = workspace.output_file(output_filename)
 
-    err = reject_traversal(output_filename)
-    if err:
-        return err
 
     if os.path.exists(output_filename) and not overwrite:
         return f"Output file {output_filename} already exists"
@@ -108,15 +142,15 @@ async def export_frame(
         output_filename: Output PNG path
         scale: Integer nearest-neighbor scale factor (default 1)
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if scale < 1 or scale > 64:
         return "scale must be between 1 and 64"
-    err = reject_traversal(output_filename)
-    if err:
-        return err
     if not output_filename.lower().endswith(".png"):
         output_filename = f"{output_filename}.png"
+        output_filename = workspace.output_file(output_filename)
 
     f0 = frame_index - 1  # CLI --frame-range is 0-based
     args = [
@@ -125,7 +159,7 @@ async def export_frame(
         "--scale", str(scale),
         "--save-as", output_filename,
     ]
-    success, output = AsepriteCommand.run_command(args)
+    success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
     if not success:
         return f"Failed to export frame: {output}"
 
@@ -133,9 +167,9 @@ async def export_frame(
     # the filename; rename the produced file when that happens.
     if not os.path.exists(output_filename):
         base, ext = os.path.splitext(output_filename)
-        candidates = sorted(glob.glob(f"{base}*{ext}"))
+        candidates = sorted([workspace.input_file(p) for p in glob.glob(f"{glob.escape(base)}*{glob.escape(ext)}")])
         if candidates:
-            os.replace(candidates[0], output_filename)
+            os.replace(workspace.input_file(candidates[0]), workspace.output_file(output_filename))
         else:
             return f"Export reported success but {output_filename} was not created"
     return f"Frame {frame_index} exported to {output_filename} at {scale}x"
@@ -166,6 +200,9 @@ async def export_spritesheet(
         data_format: JSON format for the data file: "json-array" (default) or "json-hash"
         list_tags: Include animation tag metadata in the JSON data file (default: False)
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
+    data_filename = workspace.output_file(data_filename) if data_filename else ""
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if sheet_type not in ("horizontal", "vertical", "rows", "columns", "packed"):
@@ -176,11 +213,9 @@ async def export_spritesheet(
         return "padding must be >= 0"
     if data_format not in ("json-array", "json-hash"):
         return "data_format must be 'json-array' or 'json-hash'"
-    err = reject_traversal(output_filename)
-    if err:
-        return err
     if not output_filename.lower().endswith(".png"):
         output_filename = f"{output_filename}.png"
+        output_filename = workspace.output_file(output_filename)
 
     args = ["--batch"]
     if tag_name:
@@ -216,15 +251,12 @@ async def export_spritesheet(
     if padding > 0:
         args += ["--shape-padding", str(padding)]
     if data_filename:
-        err = reject_traversal(data_filename)
-        if err:
-            return err
         args += ["--data", data_filename, "--format", data_format]
         if list_tags:
             args.append("--list-tags")
     args += ["--sheet", output_filename]
 
-    success, output = AsepriteCommand.run_command(args)
+    success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
     if success and not os.path.exists(output_filename):
         success = False
         output = "Aseprite exited 0 but wrote no sheet file"
@@ -245,36 +277,51 @@ async def export_layers(
     output_directory: str,
     include_hidden: bool = False,
 ) -> str:
-    """Export each layer as its own PNG file named <layer>.png.
+    """Export top-level uniquely named layers to numeric PNG names and return a name map.
 
-    Args:
-        filename: Aseprite file to export
-        output_directory: Directory for the per-layer PNGs (created if missing)
-        include_hidden: Also export hidden layers (default False)
+    Nested groups and duplicate names fail explicitly because CLI selection is ambiguous.
     """
-    if not os.path.exists(filename):
-        return f"File {filename} not found"
-    err = reject_traversal(output_directory)
-    if err:
-        return err
-    os.makedirs(output_directory, exist_ok=True)
-
-    args = ["--batch"]
-    if include_hidden:
-        args.append("--all-layers")
-    args += [
-        "--split-layers", filename,
-        "--save-as", os.path.join(output_directory, "{layer}.png"),
-    ]
-    success, output = AsepriteCommand.run_command(args)
+    filename = workspace.input_file(filename)
+    output_directory = workspace.output_dir(output_directory)
+    script = """
+    local spr = app.activeSprite
+    if not spr then print("ERROR:No active sprite") return end
+    local layers = {}
+    for _, layer in ipairs(spr.layers) do
+        if layer.isGroup then print("ERROR:Nested/group layers are unsupported for layer export") return end
+        table.insert(layers, {name=layer.name, visible=layer.isVisible})
+    end
+    print(json.encode(layers))
+    """
+    success, output = AsepriteCommand.execute_lua_script_checked(script, filename)
     if not success:
         return f"Failed to export layers: {output}"
-    produced = sorted(
-        os.path.basename(p) for p in glob.glob(os.path.join(output_directory, "*.png"))
-    )
-    if not produced:
-        return "Failed to export layers: Aseprite exited 0 but wrote no PNG files"
-    return f"Layers exported to {output_directory}: {', '.join(produced)}"
+    try:
+        layers = json.loads(output.strip())
+        names = [layer['name'] for layer in layers]
+        if len(set(names)) != len(names):
+            return "Failed to export layers: duplicate layer names are unsupported"
+        if any(not isinstance(name, str) or any(c in name for c in '/*?') for name in names):
+            return "Failed to export layers: ambiguous CLI layer selectors are unsupported"
+    except (ValueError, TypeError, KeyError):
+        return "Failed to export layers: invalid layer metadata"
+    os.makedirs(output_directory, exist_ok=True)
+    mapping = []
+    for ordinal, layer in enumerate(layers, 1):
+        if not include_hidden and not layer['visible']:
+            continue
+        target = workspace.output_file(os.path.join(output_directory, f'layer-{ordinal:04d}.png'))
+        args = ['--batch']
+        if include_hidden:
+            args.append('--all-layers')
+        args += ['--layer', layer['name'], filename, '--save-as', target]
+        produced = []
+        success, output = _save_export(args, produced)
+        if not success:
+            return f"Failed to export layers: {output}"
+        files = [os.path.basename(path) for path in produced]
+        mapping.append({'files': files, 'layer': layer['name']})
+    return json.dumps({'directory': output_directory, 'layers': mapping})
 
 
 @mcp.tool()
@@ -292,13 +339,12 @@ async def export_tag(
         output_filename: Output path; .gif gives an animation, .png a sequence
         scale: Integer scale factor (default 1)
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if scale < 1 or scale > 64:
         return "scale must be between 1 and 64"
-    err = reject_traversal(output_filename)
-    if err:
-        return err
 
     # --tag silently exports *all* frames (exit 0) when the tag does not
     # exist, so a produced file is not proof the tag was honoured. Validate
@@ -320,13 +366,13 @@ async def export_tag(
     if scale > 1:
         args += ["--scale", str(scale)]
     args += ["--save-as", output_filename]
-    success, output = AsepriteCommand.run_command(args)
+    success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
     if success:
         # A multi-frame tag saved to a still format produces frame-numbered
         # siblings instead of the exact name — accept those, same convention
         # as export_sprite/export_frame.
         base, ext = os.path.splitext(output_filename)
-        if not os.path.exists(output_filename) and not glob.glob(f"{base}*{ext}"):
+        if not os.path.exists(output_filename) and not [workspace.input_file(p) for p in glob.glob(f"{glob.escape(base)}*{glob.escape(ext)}")]:
             success = False
             output = "Aseprite exited 0 but wrote no file"
     if success:
@@ -356,13 +402,12 @@ async def export_animation(
         background: Optional hex colour filled behind every frame, e.g.
             "#E9EEF2" so a dark outline reads in any viewer; "" keeps transparency
     """
+    filename = workspace.input_file(filename)
+    output_filename = workspace.output_file(output_filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if scale < 1 or scale > 64:
         return "scale must be between 1 and 64"
-    err = reject_traversal(output_filename)
-    if err:
-        return err
     if os.path.splitext(output_filename)[1].lower() not in (".gif", ".png"):
         return "output_filename must end in .gif or .png"
     bg = None
@@ -371,7 +416,7 @@ async def export_animation(
         if bg is None:
             return f"Invalid color value: {background}"
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with workspace.scratch() as tmp:
         source = filename
         if tag or bg:
             # --tag silently exports every frame when the tag is missing, so
@@ -423,12 +468,12 @@ async def export_animation(
         if scale > 1:
             args += ["--scale", str(scale)]
         args += ["--save-as", output_filename]
-        success, output = AsepriteCommand.run_command(args)
+        success, output = _save_export(args) if "--save-as" in args else AsepriteCommand.run_command(args)
 
     if success:
         # A PNG sequence is written as frame-numbered siblings of the name.
         base, ext = os.path.splitext(output_filename)
-        if not os.path.exists(output_filename) and not glob.glob(f"{base}*{ext}"):
+        if not os.path.exists(output_filename) and not [workspace.input_file(p) for p in glob.glob(f"{glob.escape(base)}*{glob.escape(ext)}")]:
             success = False
             output = "Aseprite exited 0 but wrote no file"
     if not success:
@@ -460,6 +505,8 @@ async def import_image_as_layer(
         x: X position for the image's top-left corner (default 0)
         y: Y position for the image's top-left corner (default 0)
     """
+    filename = workspace.input_file(filename)
+    image_path = workspace.input_file(image_path)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not os.path.exists(image_path):

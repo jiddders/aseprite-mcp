@@ -1,10 +1,11 @@
 """Export and import tools (export.py)."""
+import json
 import os
 import struct
 
 from conftest import BASE, ok, run
 
-from aseprite_mcp.tools import animation, export
+from aseprite_mcp.tools import animation, canvas, export
 
 
 def png_size(path):
@@ -38,6 +39,18 @@ def test_export_spritesheet_tag_filter(sprite):
 def test_export_layers(sprite):
     result = ok(run(export.export_layers(sprite, f"{BASE}/layers")))
     assert ".png" in result
+
+
+def test_export_layers_returns_frames_in_numeric_order():
+    sprite = f"{BASE}/layer-sequence.aseprite"
+    output_dir = f"{BASE}/layer-sequence"
+    ok(run(canvas.create_canvas(8, 8, sprite)))
+    ok(run(animation.add_frames(sprite, 11)))
+
+    result = json.loads(ok(run(export.export_layers(sprite, output_dir))))
+    files = result["layers"][0]["files"]
+    assert files == [f"layer-0001{frame}.png" for frame in range(1, 13)]
+    assert all(os.path.isfile(os.path.join(output_dir, name)) for name in files)
 
 
 def test_export_tag_gif(sprite):

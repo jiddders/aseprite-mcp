@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import json
 import os
 from typing import List, Dict, Any
@@ -40,6 +41,7 @@ async def create_tilemap_layer(
         tile_width: Tile width in pixels
         tile_height: Tile height in pixels
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if tile_width <= 0 or tile_height <= 0:
@@ -98,6 +100,7 @@ async def draw_on_tile(
             for the empty tile and cannot be drawn on)
         pixels: List of {"x": int, "y": int, "color": "#RRGGBB"}
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if tile_index < 1:
@@ -178,6 +181,7 @@ async def set_tiles(
         tiles: List of {"col": int, "row": int, "tile_index": int}
             (col/row are grid coordinates; tile_index 0 clears the cell)
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if not tiles:
@@ -284,6 +288,7 @@ async def get_tile_at(
     Returns:
         JSON with {col, row, tile_index} (0 = empty).
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -337,6 +342,7 @@ async def get_tilemap_info(filename: str, layer_name: str) -> str:
         JSON with tile_width, tile_height, tile_count (real tiles,
         excluding the empty tile 0), map_cols, map_rows.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 

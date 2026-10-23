@@ -1,3 +1,4 @@
+from ..core.workspace import workspace
 import json
 import os
 from ..core.commands import AsepriteCommand, lua_escape
@@ -32,6 +33,7 @@ async def create_slice(
         width: Slice width
         height: Slice height
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -84,6 +86,7 @@ async def set_slice_center(
         width: Center-rect width
         height: Center-rect height
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
     if width <= 0 or height <= 0:
@@ -122,6 +125,7 @@ async def set_slice_pivot(filename: str, name: str, x: int, y: int) -> str:
         x: Pivot x, relative to the slice
         y: Pivot y, relative to the slice
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -155,6 +159,7 @@ async def list_slices(filename: str) -> str:
     Returns:
         JSON array of {name, x, y, width, height, center?, pivot?}.
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
@@ -202,6 +207,7 @@ async def delete_slice(filename: str, name: str) -> str:
         filename: Aseprite file to modify
         name: Slice name to delete
     """
+    filename = workspace.input_file(filename)
     if not os.path.exists(filename):
         return f"File {filename} not found"
 
